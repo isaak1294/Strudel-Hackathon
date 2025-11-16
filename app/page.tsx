@@ -8,12 +8,23 @@ export default function Page() {
         {/* Sidebar */}
         <aside className="hidden w-60 flex-col gap-2 bg-black/90 p-4 text-sm text-slate-200 md:flex">
           {/* Logo placeholder */}
-          <div className="mb-4 flex items-center gap-2 text-lg font-bold tracking-tight">
+          <Link
+            href="/"
+            className="mb-4 flex items-center gap-2 text-lg font-bold tracking-tight hover:opacity-90 transition"
+          >
             <div className="h-8 w-8 rounded-full bg-green-500" />
             <span className="text-white">Strudelify</span>
-          </div>
+          </Link>
 
-          <div className="mt-6 border-t border-zinc-800 pt-4 text-xs text-slate-400">
+          {/* Add Submission button */}
+          <a
+            href="/submit"
+            className="mb-4 inline-flex items-center justify-center rounded-full bg-emerald-500 px-4 py-2 text-sm font-semibold text-black shadow-md shadow-emerald-500/40 transition hover:bg-emerald-400 hover:shadow-lg hover:shadow-emerald-500/50"
+          >
+            + Add Submission
+          </a>
+
+          <div className="mt-4 border-t border-zinc-800 pt-4 text-xs text-slate-400">
             <p className="mb-1 font-semibold uppercase tracking-widest">
               Resources
             </p>
@@ -61,6 +72,7 @@ export default function Page() {
             </div>
           </div>
         </aside>
+
 
 
         {/* Main content */}
@@ -193,45 +205,6 @@ export default function Page() {
                       <p className="text-xs text-zinc-400">Playlist</p>
                     </div>
                   </Link>
-
-                  {/* Other releases */}
-                  {[
-                    {
-                      title: "Generative Nights",
-                      year: "2025",
-                      type: "Album",
-                    },
-                    {
-                      title: "Live at the Terminal",
-                      year: "2024",
-                      type: "EP",
-                    },
-                    {
-                      title: "Algorithmic Bloom",
-                      year: "2023",
-                      type: "Album",
-                    },
-                    {
-                      title: "Intro to Patterns",
-                      year: "2022",
-                      type: "Single",
-                    },
-                  ].map((release) => (
-                    <div
-                      key={release.title}
-                      className="group cursor-pointer rounded-xl bg-zinc-900/60 p-3 transition hover:bg-zinc-800/80"
-                    >
-                      <div className="mb-3 aspect-square w-full overflow-hidden rounded-md bg-gradient-to-br from-emerald-500 via-fuchsia-500 to-sky-500 shadow-md shadow-black/40" />
-                      <div className="space-y-0.5">
-                        <p className="line-clamp-2 text-sm font-semibold text-white">
-                          {release.title}
-                        </p>
-                        <p className="text-xs text-zinc-400">
-                          {release.type} • {release.year}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
                 </div>
               </div>
             </section>

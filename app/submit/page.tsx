@@ -1,51 +1,29 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import Link from "next/link";
 
 type Submission = {
     id: number;
     projectName: string;
     userName: string;
     projectUrl: string;
-    imageUrl: string; // e.g. "/uploads/xyz.png"
+    imageUrl: string;
 };
 
 const API_BASE =
     process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:3002";
 
-export default function Page() {
-    const [submissions, setSubmissions] = useState<Submission[]>([]);
+export default function SubmitPage() {
     const [submitting, setSubmitting] = useState(false);
-    const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-
-    async function loadSubmissions() {
-        try {
-            setError(null);
-            setLoading(true);
-            console.log("Fetching submissions from", `${API_BASE}/api/submissions`);
-            const res = await fetch(`${API_BASE}/api/submissions`, {
-                cache: "no-store",
-            });
-            if (!res.ok) throw new Error(`Failed to load submissions (${res.status})`);
-            const data = (await res.json()) as Submission[];
-            setSubmissions(data);
-        } catch (err: any) {
-            console.error("Error loading submissions:", err);
-            setError(err.message || "Failed to load submissions");
-        } finally {
-            setLoading(false);
-        }
-    }
-
-    useEffect(() => {
-        loadSubmissions();
-    }, []);
+    const [success, setSuccess] = useState<string | null>(null);
 
     async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
         setSubmitting(true);
         setError(null);
+        setSuccess(null);
 
         const form = e.currentTarget;
         const formData = new FormData(form);
@@ -62,7 +40,7 @@ export default function Page() {
             }
 
             form.reset();
-            await loadSubmissions();
+            setSuccess("Submission received! Check the All Songs page to see it.");
         } catch (err: any) {
             console.error("Error submitting:", err);
             setError(err.message || "Something went wrong");
@@ -72,156 +50,196 @@ export default function Page() {
     }
 
     return (
-        <main className="min-h-screen bg-slate-950 bg-gradient-to-b from-slate-900 via-slate-950 to-black text-slate-50">
-            <div className="mx-auto max-w-5xl px-4 py-10">
-                {/* Header */}
-                <header className="mb-8 text-center">
-                    <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
-                        Strudel Hackathon Gallery
-                    </h1>
-                    <p className="mt-2 text-sm text-slate-300 md:text-base">
-                        Submit your project and see everyone&apos;s entries below.
-                    </p>
-                </header>
+        <main className="min-h-screen bg-black text-white">
+            <div className="flex h-screen overflow-hidden">
+                {/* Sidebar */}
+                <aside className="hidden w-60 flex-col gap-2 bg-black/90 p-4 text-sm text-slate-200 md:flex">
+                    {/* Logo placeholder */}
+                    <Link
+                        href="/"
+                        className="mb-4 flex items-center gap-2 text-lg font-bold tracking-tight hover:opacity-90 transition"
+                    >
+                        <div className="h-8 w-8 rounded-full bg-green-500" />
+                        <span className="text-white">Strudelify</span>
+                    </Link>
 
-                {/* Layout: form + gallery */}
-                <div className="grid gap-8 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1.5fr)] items-start">
-                    {/* Form card */}
-                    <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-lg shadow-slate-900/50 backdrop-blur">
-                        <h2 className="mb-3 text-lg font-semibold text-slate-100">
-                            Submit your project
-                        </h2>
-                        <p className="mb-4 text-xs text-slate-400">
-                            Required: project link, project name, your name/handle, and an
-                            image (screenshot, cover art, etc.).
+                    {/* Add Submission button */}
+                    <a
+                        href="/submit"
+                        className="mb-4 inline-flex items-center justify-center rounded-full bg-emerald-500 px-4 py-2 text-sm font-semibold text-black shadow-md shadow-emerald-500/40 transition hover:bg-emerald-400 hover:shadow-lg hover:shadow-emerald-500/50"
+                    >
+                        + Add Submission
+                    </a>
+
+                    <div className="mt-4 border-t border-zinc-800 pt-4 text-xs text-slate-400">
+                        <p className="mb-1 font-semibold uppercase tracking-widest">
+                            Resources
                         </p>
-
-                        {error && (
-                            <div className="mb-4 rounded-md border border-red-500/40 bg-red-950/40 px-3 py-2 text-xs text-red-200">
-                                {error}
-                            </div>
-                        )}
-
-                        <form
-                            onSubmit={handleSubmit}
-                            encType="multipart/form-data"
-                            className="space-y-4"
-                        >
-                            <div>
-                                <label className="mb-1 block text-xs font-medium text-slate-200">
-                                    Project Name
-                                </label>
-                                <input
-                                    name="projectName"
-                                    required
-                                    type="text"
-                                    className="w-full rounded-md border border-slate-700 bg-slate-900/70 px-3 py-2 text-sm text-slate-50 outline-none ring-0 transition focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="mb-1 block text-xs font-medium text-slate-200">
-                                    Your Name / Handle
-                                </label>
-                                <input
-                                    name="userName"
-                                    required
-                                    type="text"
-                                    className="w-full rounded-md border border-slate-700 bg-slate-900/70 px-3 py-2 text-sm text-slate-50 outline-none ring-0 transition focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="mb-1 block text-xs font-medium text-slate-200">
-                                    Project Link
-                                </label>
-                                <input
-                                    name="projectUrl"
-                                    required
-                                    type="url"
-                                    placeholder="https://..."
-                                    className="w-full rounded-md border border-slate-700 bg-slate-900/70 px-3 py-2 text-sm text-slate-50 outline-none ring-0 transition focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="mb-1 block text-xs font-medium text-slate-200">
-                                    Image
-                                </label>
-                                <input
-                                    name="image"
-                                    type="file"
-                                    accept="image/*"
-                                    required
-                                    className="w-full text-sm text-slate-200 file:mr-3 file:rounded-md file:border-0 file:bg-indigo-500/90 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-slate-50 hover:file:bg-indigo-400"
-                                />
-                            </div>
-
-                            <button
-                                type="submit"
-                                disabled={submitting}
-                                className="inline-flex items-center rounded-md bg-indigo-500 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-indigo-500/30 transition hover:bg-indigo-400 disabled:cursor-not-allowed disabled:bg-indigo-500/60"
+                        <div className="mt-2 space-y-1 text-slate-300">
+                            <a
+                                href="https://strudel.cc/learn/getting-started/"
+                                target="_blank"
+                                rel="noreferrer"
+                                className="block cursor-pointer truncate hover:text-white"
                             >
-                                {submitting ? "Submitting..." : "Submit"}
-                            </button>
-                        </form>
-                    </section>
-
-                    {/* Gallery card */}
-                    <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-lg shadow-slate-900/50 backdrop-blur">
-                        <div className="mb-4 flex items-center justify-between gap-2">
-                            <h2 className="text-lg font-semibold text-slate-100">
-                                Submissions
-                            </h2>
-                            <button
-                                onClick={loadSubmissions}
-                                className="text-xs text-slate-300 underline-offset-2 hover:underline"
+                                Getting Started
+                            </a>
+                            <a
+                                href="https://strudel.cc/learn/first-sounds/"
+                                target="_blank"
+                                rel="noreferrer"
+                                className="block cursor-pointer truncate hover:text-white"
                             >
-                                Refresh
+                                First Sounds (Workshop)
+                            </a>
+                            <a
+                                href="https://strudel.cc/learn/code/"
+                                target="_blank"
+                                rel="noreferrer"
+                                className="block cursor-pointer truncate hover:text-white"
+                            >
+                                Coding Syntax
+                            </a>
+                            <a
+                                href="https://strudel.cc/learn/sounds/"
+                                target="_blank"
+                                rel="noreferrer"
+                                className="block cursor-pointer truncate hover:text-white"
+                            >
+                                Sounds
+                            </a>
+                            <a
+                                href="https://strudel.cc/learn/synths/"
+                                target="_blank"
+                                rel="noreferrer"
+                                className="block cursor-pointer truncate hover:text-white"
+                            >
+                                Synths
+                            </a>
+                        </div>
+                    </div>
+                </aside>
+
+                {/* Main content */}
+                <div className="flex min-w-0 flex-1 flex-col bg-gradient-to-b from-zinc-800 via-zinc-900 to-black">
+                    {/* Top bar */}
+                    <header className="flex h-14 items-center justify-between px-4 text-sm text-slate-200 md:px-6">
+                        <div className="flex items-center gap-2">
+                            <a
+                                href="/"
+                                className="flex h-8 w-8 items-center justify-center rounded-full bg-black/70 text-slate-200 hover:bg-black"
+                            >
+                                {"<"}
+                            </a>
+                            <button className="flex h-8 w-8 items-center justify-center rounded-full bg-black/70 text-slate-400 hover:bg-black">
+                                {">"}
                             </button>
                         </div>
+                    </header>
 
-                        {loading ? (
-                            <p className="text-sm text-slate-300">Loading submissions…</p>
-                        ) : submissions.length === 0 ? (
-                            <p className="text-sm text-slate-300">
-                                No submissions yet. Be the first!
-                            </p>
-                        ) : (
-                            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                                {submissions.map((s) => (
-                                    <article
-                                        key={s.id}
-                                        className="flex flex-col overflow-hidden rounded-xl border border-slate-800 bg-slate-950/70 shadow-sm shadow-slate-900/40"
-                                    >
-                                        <div className="relative h-40 w-full overflow-hidden bg-slate-900">
-                                            <img
-                                                src={`${API_BASE}${s.imageUrl}`}
-                                                alt={s.projectName}
-                                                className="h-full w-full object-cover"
-                                            />
-                                        </div>
-                                        <div className="flex flex-1 flex-col px-3 py-3">
-                                            <h3 className="line-clamp-2 text-sm font-semibold text-slate-50">
-                                                {s.projectName}
-                                            </h3>
-                                            <p className="mt-1 text-xs text-slate-400">
-                                                by {s.userName}
-                                            </p>
-                                            <a
-                                                href={s.projectUrl}
-                                                target="_blank"
-                                                rel="noreferrer"
-                                                className="mt-3 inline-flex w-fit text-xs font-medium text-indigo-300 underline-offset-2 hover:text-indigo-200 hover:underline"
-                                            >
-                                                View project
-                                            </a>
-                                        </div>
-                                    </article>
-                                ))}
+                    {/* Scrollable content */}
+                    <div className="flex-1 overflow-y-auto">
+                        <div className="mx-auto flex max-w-3xl flex-col px-4 pb-12 pt-8 md:pt-10">
+                            {/* Page header */}
+                            <div className="mb-6">
+                                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-300">
+                                    Strudel Hackathon
+                                </p>
+                                <h1 className="mt-2 text-3xl font-semibold tracking-tight md:text-4xl">
+                                    Submit your project
+                                </h1>
+                                <p className="mt-2 text-sm text-slate-300 md:text-base">
+                                    Share your Strudel link, project name, your handle, and an
+                                    image. Your piece will appear in the All Songs playlist and
+                                    get its own song page.
+                                </p>
                             </div>
-                        )}
-                    </section>
+
+                            {/* Form card */}
+                            <section className="rounded-2xl border border-slate-800 bg-slate-950/70 p-5 shadow-lg shadow-slate-950/60 backdrop-blur">
+                                <p className="mb-4 text-xs text-slate-400">
+                                    Make sure your project link points to your Strudel project
+                                    (e.g. a <span className="font-mono">strudel.cc</span> URL).
+                                </p>
+
+                                {error && (
+                                    <div className="mb-4 rounded-md border border-red-500/40 bg-red-950/40 px-3 py-2 text-xs text-red-200">
+                                        {error}
+                                    </div>
+                                )}
+
+                                {success && (
+                                    <div className="mb-4 rounded-md border border-emerald-500/40 bg-emerald-950/40 px-3 py-2 text-xs text-emerald-200">
+                                        {success}
+                                    </div>
+                                )}
+
+                                <form
+                                    onSubmit={handleSubmit}
+                                    encType="multipart/form-data"
+                                    className="space-y-4"
+                                >
+                                    <div>
+                                        <label className="mb-1 block text-xs font-medium text-slate-200">
+                                            Project Name
+                                        </label>
+                                        <input
+                                            name="projectName"
+                                            required
+                                            type="text"
+                                            className="w-full rounded-md border border-slate-700 bg-slate-900/70 px-3 py-2 text-sm text-slate-50 outline-none ring-0 transition focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="mb-1 block text-xs font-medium text-slate-200">
+                                            Your Name / Handle
+                                        </label>
+                                        <input
+                                            name="userName"
+                                            required
+                                            type="text"
+                                            className="w-full rounded-md border border-slate-700 bg-slate-900/70 px-3 py-2 text-sm text-slate-50 outline-none ring-0 transition focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="mb-1 block text-xs font-medium text-slate-200">
+                                            Strudel Project Link
+                                        </label>
+                                        <input
+                                            name="projectUrl"
+                                            required
+                                            type="url"
+                                            placeholder="https://strudel.cc/..."
+                                            className="w-full rounded-md border border-slate-700 bg-slate-900/70 px-3 py-2 text-sm text-slate-50 outline-none ring-0 transition focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="mb-1 block text-xs font-medium text-slate-200">
+                                            Image (screenshot / cover art)
+                                        </label>
+                                        <input
+                                            name="image"
+                                            type="file"
+                                            accept="image/*"
+                                            required
+                                            className="w-full text-sm text-slate-200 file:mr-3 file:rounded-md file:border-0 file:bg-emerald-500/90 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-slate-50 hover:file:bg-emerald-400"
+                                        />
+                                    </div>
+
+                                    <button
+                                        type="submit"
+                                        disabled={submitting}
+                                        className="inline-flex items-center rounded-full bg-emerald-500 px-5 py-2 text-sm font-semibold text-black shadow-sm shadow-emerald-500/40 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-emerald-500/60"
+                                    >
+                                        {submitting ? "Submitting..." : "Submit project"}
+                                    </button>
+                                </form>
+                            </section>
+                        </div>
+                    </div>
                 </div>
             </div>
         </main>
