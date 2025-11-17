@@ -16,31 +16,21 @@ async function main() {
     const rootDir = path.resolve(__dirname, "..");
 
     const jsonPath = path.join(rootDir, "submissions.json");
-    const dbPath = path.join(rootDir, "data.sqlite");
 
-    if (!fs.existsSync(jsonPath)) {
-        throw new Error(`submissions.json not found at: ${jsonPath}`);
+    const DATA_DIR =
+        process.env.DATA_DIR || path.join(rootDir, "data");
+    if (!fs.existsSync(DATA_DIR)) {
+        fs.mkdirSync(DATA_DIR, { recursive: true });
     }
+    const dbPath = path.join(DATA_DIR, "data.sqlite");
 
     console.log("Reading JSON from", jsonPath);
     const raw = fs.readFileSync(jsonPath, "utf8");
+    const submissions = JSON.parse(raw) as SubmissionJson[];
 
-    let submissions: SubmissionJson[];
-    try {
-        submissions = JSON.parse(raw);
-    } catch (e) {
-        console.error("Failed to parse submissions.json as JSON");
-        throw e;
-    }
+    console.log("Opening DB at", dbPath);
+    const db = await open({ filename: dbPath, driver: sqlite3.Database });
 
-    console.log(`Loaded ${submissions.length} submissions from JSON`);
-
-    const db = await open({
-        filename: dbPath,
-        driver: sqlite3.Database,
-    });
-
-    // Make sure table exists
     await db.exec(`
     CREATE TABLE IF NOT EXISTS submissions (
       id INTEGER PRIMARY KEY,
@@ -52,12 +42,11 @@ async function main() {
     );
   `);
 
-    console.log("Clearing existing submissions table...");
+    console.log("Clearing existing submissions...");
     await db.exec(`DELETE FROM submissions;`);
 
     console.log("Inserting rows...");
     await db.exec("BEGIN TRANSACTION;");
-
     const stmt = await db.prepare(`
     INSERT INTO submissions (id, projectName, userName, projectUrl, imageUrl, createdAt)
     VALUES (?, ?, ?, ?, ?, ?)
@@ -78,7 +67,7 @@ async function main() {
     await db.exec("COMMIT;");
     await db.close();
 
-    console.log("Done. Inserted", submissions.length, "rows into", dbPath);
+    console.log("Done. Inserted", submissions.length, "rows.");
 }
 
 main().catch((err) => {

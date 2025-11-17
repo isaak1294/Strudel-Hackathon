@@ -1,15 +1,16 @@
+// src/server.ts
 import express from "express";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
-import sqlite3 from "sqlite3";
-import { open, Database } from "sqlite";
-import cors from "cors"
-
+import type { Database } from "sqlite";
+import { openDb } from "./db";
+import cors from "cors";
 
 const app = express();
-let db: any;
+let db: Database;
 
+// CORS
 app.use(
     cors({
         origin: [
@@ -19,42 +20,23 @@ app.use(
     })
 );
 
-console.log("Starting server file...");
+// --- DATA DIR / UPLOADS -----------------------------------------------
 
-(async () => {
-    try {
-        console.log("Opening DB...");
-        db = await open({
-            filename: "./data.sqlite",
-            driver: sqlite3.Database,
-        });
+const DATA_DIR =
+    process.env.DATA_DIR || path.join(process.cwd(), "data");
 
-        await db.exec(`
-      CREATE TABLE IF NOT EXISTS submissions (
-        id          INTEGER PRIMARY KEY AUTOINCREMENT,
-        projectName TEXT NOT NULL,
-        userName    TEXT NOT NULL,
-        projectUrl  TEXT NOT NULL,
-        imageUrl    TEXT NOT NULL,
-        createdAt   DATETIME DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
+if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+}
 
-        console.log("DB ready.");
-    } catch (err) {
-        console.error("DB init failed:", err);
-    }
-})();
-
-// --- FILE UPLOAD SETUP -------------------------------------------------
-const uploadDir = path.join(__dirname, "../uploads");
+const uploadDir = path.join(DATA_DIR, "uploads");
 if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
 }
 
 const storage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, uploadDir),
-    filename: (req, file, cb) => {
+    destination: (_req, _file, cb) => cb(null, uploadDir),
+    filename: (_req, file, cb) => {
         const unique = Date.now() + "-" + Math.round(Math.random() * 1e9);
         const ext = path.extname(file.originalname);
         cb(null, unique + ext);
@@ -68,6 +50,8 @@ const upload = multer({
 
 // serve images
 app.use("/uploads", express.static(uploadDir));
+
+// --- ROUTES -----------------------------------------------------------
 
 // health check
 app.get("/api/health", (_req, res) => {
@@ -97,17 +81,22 @@ app.post("/api/submissions", upload.single("image"), async (req, res) => {
 
         res.status(201).json({ success: true, imageUrl });
     } catch (e) {
-        console.error(e);
+        console.error("Error creating submission:", e);
         res.status(500).json({ error: "Server error" });
     }
 });
 
 // list submissions
 app.get("/api/submissions", async (_req, res) => {
-    const rows = await db.all(
-        `SELECT * FROM submissions ORDER BY createdAt DESC`
-    );
-    res.json(rows);
+    try {
+        const rows = await db.all(
+            `SELECT * FROM submissions ORDER BY createdAt DESC`
+        );
+        res.json(rows);
+    } catch (e) {
+        console.error("Error listing submissions:", e);
+        res.status(500).json({ error: "Server error" });
+    }
 });
 
 // Get a single submission by ID
@@ -134,10 +123,36 @@ app.get("/api/submissions/:id", async (req, res) => {
     }
 });
 
+// --- STARTUP ----------------------------------------------------------
+
 const PORT = process.env.PORT || 3002;
-app.listen(PORT, () => {
-    console.log(`Express listening on http://localhost:${PORT}`);
-});
+
+async function start() {
+    try {
+        console.log("Opening DB...");
+        db = await openDb();
+
+        await db.exec(`
+      CREATE TABLE IF NOT EXISTS submissions (
+        id INTEGER PRIMARY KEY,
+        projectName TEXT NOT NULL,
+        userName TEXT NOT NULL,
+        projectUrl TEXT NOT NULL,
+        imageUrl TEXT NOT NULL,
+        createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+        app.listen(PORT, () => {
+            console.log(`Express listening on http://localhost:${PORT}`);
+        });
+    } catch (err) {
+        console.error("Failed to start server:", err);
+        process.exit(1);
+    }
+}
+
+start();
 
 // catch anything unhandled so you actually SEE it
 process.on("uncaughtException", (err) => {
@@ -147,6 +162,3 @@ process.on("uncaughtException", (err) => {
 process.on("unhandledRejection", (reason) => {
     console.error("Unhandled rejection:", reason);
 });
-
-
-
