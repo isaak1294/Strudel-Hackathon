@@ -1,7 +1,56 @@
 // app/page.tsx
 import Link from "next/link";
 
-export default function Page() {
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:3002";
+
+const FEATURED_TITLES = [
+  "The Criminal Mind of a Crow",
+  "El-Pueblo-Reimagined",
+  "Dear",
+  "yippeeee",
+  "sonic colors",
+];
+
+type Submission = {
+  id: number;
+  projectName: string;
+  userName: string;
+  projectUrl: string;
+  imageUrl: string;
+};
+
+
+export default async function Page() {
+  let submissions: Submission[] = [];
+
+
+  try {
+    const res = await fetch(`${API_BASE}/api/submissions`, {
+      cache: "no-store",
+    });
+    if (res.ok) {
+      submissions = (await res.json()) as Submission[];
+    } else {
+      console.error("Failed to load submissions on front page", res.status);
+    }
+  } catch (err) {
+    console.error("Error loading submissions on front page:", err);
+  }
+
+  const featuredTracks = FEATURED_TITLES.map((title) =>
+    submissions.find((s) => s.projectName === title)
+  ).filter((s): s is Submission => !!s);
+
+  const randomFeatured =
+    featuredTracks.length > 0
+      ? featuredTracks[
+      Math.floor(
+        Math.random() * Math.min(5, featuredTracks.length)
+      )
+      ]
+      : null;
+
   return (
     <main className="min-h-screen bg-black text-white">
       <div className="flex h-screen overflow-hidden">
@@ -103,80 +152,80 @@ export default function Page() {
             <section className="relative z-10 -mt-4 rounded-t-3xl bg-gradient-to-b from-zinc-900/90 via-zinc-950 to-black px-4 pb-12 pt-4 md:px-8">
               {/* Controls row */}
               <div className="mb-6 flex items-center gap-4">
-                <button className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500 text-black shadow-lg shadow-emerald-500/40 hover:scale-105 hover:bg-emerald-400">
-                  {/* Play triangle */}
-                  <svg
-                    viewBox="0 0 24 24"
-                    className="h-6 w-6 fill-black"
-                    aria-hidden="true"
+                {randomFeatured ? (
+                  <a
+                    href={`/songs/${randomFeatured.id}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500 text-black shadow-lg shadow-emerald-500/40 transition hover:scale-105 hover:bg-emerald-400"
                   >
-                    <path d="M8 5v14l11-7z" />
-                  </svg>
-                </button>
+                    <svg
+                      viewBox="0 0 24 24"
+                      className="h-6 w-6 fill-black"
+                      aria-hidden="true"
+                    >
+                      <path d="M8 5v14l11-7z" />
+                    </svg>
+                  </a>
+                ) : (
+                  <button
+                    className="flex h-12 w-12 items-center justify-center rounded-full bg-zinc-600 text-black opacity-60"
+                    disabled
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      className="h-6 w-6 fill-black"
+                      aria-hidden="true"
+                    >
+                      <path d="M8 5v14l11-7z" />
+                    </svg>
+                  </button>
+                )}
+
                 <button className="rounded-full border border-zinc-700 px-4 py-1.5 text-xs font-semibold text-slate-100 hover:border-zinc-500">
                   Follow
                 </button>
                 <span className="text-2xl text-zinc-400">•••</span>
               </div>
 
-              {/* Winning Songs */}
+              {/* Featured Songs */}
               <div className="mb-8">
                 <h2 className="mb-3 text-lg font-semibold text-white">
-                  Winners
+                  Featured Tracks
                 </h2>
-                <div className="space-y-1 text-sm">
-                  {[
-                    {
-                      title: "People's Choice",
-                      plays: "1,203,948",
-                      duration: "3:42",
-                    },
-                    {
-                      title: "Most Creative",
-                      plays: "893,210",
-                      duration: "4:05",
-                    },
-                    {
-                      title: "Best Presentation",
-                      plays: "541,226",
-                      duration: "5:11",
-                    },
-                    {
-                      title: "another one",
-                      plays: "332,789",
-                      duration: "3:58",
-                    },
-                    {
-                      title: "anotherer one",
-                      plays: "210,004",
-                      duration: "4:21",
-                    },
-                  ].map((track, idx) => (
-                    <div
-                      key={track.title}
-                      className="grid grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-3 rounded-md px-3 py-2 text-slate-200 hover:bg-zinc-800/70"
-                    >
-                      <span className="w-4 text-xs text-zinc-400">
-                        {idx + 1}
-                      </span>
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-white">
-                          {track.title}
-                        </p>
-                        <p className="text-xs text-zinc-400">
-                          Maybe You!
-                        </p>
-                      </div>
-                      <span className="hidden text-xs text-zinc-400 sm:inline">
-                        {track.plays}
-                      </span>
-                      <span className="text-xs text-zinc-400">
-                        {track.duration}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+
+                {featuredTracks.length === 0 ? (
+                  <p className="text-sm text-zinc-400">
+                    Featured songs will appear here once submissions are loaded.
+                  </p>
+                ) : (
+                  <div className="space-y-1 text-sm">
+                    {featuredTracks.map((track, idx) => (
+                      <a
+                        key={track.id}
+                        href={`/songs/${track.id}`}
+                        className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-md px-3 py-2 text-slate-200 hover:bg-zinc-800/70"
+                      >
+                        <span className="w-4 text-xs text-zinc-400">
+                          {idx + 1}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-white">
+                            {track.projectName}
+                          </p>
+                          <p className="text-xs text-zinc-400">
+                            View on Strudel
+                          </p>
+                        </div>
+                        <span className="text-xs text-emerald-400">
+                          Open
+                        </span>
+                      </a>
+                    ))}
+                  </div>
+                )}
               </div>
+
 
               {/* Discography */}
               <div className="space-y-4">
