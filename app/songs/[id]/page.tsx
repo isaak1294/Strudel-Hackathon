@@ -1,5 +1,7 @@
 // app/songs/[id]/page.tsx
 
+import { ProjectImage } from "@/app/components/ProjectImage";
+
 type Submission = {
     id: number;
     projectName: string;
@@ -79,19 +81,7 @@ export default async function SongPage({ params }: SongPageProps) {
                     {/* Hero section */}
                     <section className="flex flex-col gap-6 px-4 pb-6 pt-6 md:flex-row md:items-start md:px-8 md:pb-10 md:pt-10">
                         {/* Cover / image */}
-                        <div className="flex justify-center md:justify-start">
-                            <div className="relative h-40 w-40 overflow-hidden rounded-md bg-zinc-900 shadow-2xl shadow-black md:h-56 md:w-56">
-                                {imageUrl ? (
-                                    <img
-                                        src={`${API_BASE}${imageUrl}`}
-                                        alt={projectName}
-                                        className="h-full w-full object-cover"
-                                    />
-                                ) : (
-                                    <div className="h-full w-full bg-gradient-to-br from-emerald-500 via-fuchsia-500 to-sky-500" />
-                                )}
-                            </div>
-                        </div>
+                        <ProjectImage imageUrl={imageUrl} projectName={projectName} API_BASE={API_BASE} />
 
                         {/* Text/meta */}
                         <div className="flex flex-1 flex-col justify-center gap-3 text-center md:text-left">

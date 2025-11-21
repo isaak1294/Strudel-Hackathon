@@ -18,6 +18,8 @@ app.use(
         origin: [
             "http://localhost:3000",
             "https://strudel.jimmer.dev",
+            "https://uvichacks.com",
+            "https://www.uvichacks.com",
         ],
     })
 );
