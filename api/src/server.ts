@@ -10,6 +10,8 @@ import cors from "cors";
 const app = express();
 let db: Database;
 
+app.use(express.json());
+
 // CORS
 app.use(
     cors({
@@ -52,6 +54,46 @@ const upload = multer({
 app.use("/uploads", express.static(uploadDir));
 
 // --- ROUTES -----------------------------------------------------------
+
+// register UVic Hacks member
+app.post("/api/registrations", async (req, res) => {
+    try {
+        const { name, email, vnumber } = req.body || {};
+
+        if (!name || !email || !vnumber) {
+            return res.status(400).json({ error: "Missing name, email, or vnumber" });
+        }
+
+        await db.run(
+            `INSERT INTO registrations (name, email, vnumber)
+             VALUES (?, ?, ?)`,
+            name,
+            email,
+            vnumber
+        );
+
+        res.status(201).json({ success: true });
+    } catch (e) {
+        console.error("Error creating registration:", e);
+        res.status(500).json({ error: "Server error" });
+    }
+});
+
+// list registrations (optional)
+app.get("/api/registrations", async (_req, res) => {
+    try {
+        const rows = await db.all(
+            `SELECT id, name, email, vnumber, createdAt
+             FROM registrations
+             ORDER BY createdAt DESC`
+        );
+        res.json(rows);
+    } catch (e) {
+        console.error("Error listing registrations:", e);
+        res.status(500).json({ error: "Server error" });
+    }
+});
+
 
 // health check
 app.get("/api/health", (_req, res) => {
@@ -133,15 +175,24 @@ async function start() {
         db = await openDb();
 
         await db.exec(`
-      CREATE TABLE IF NOT EXISTS submissions (
-        id INTEGER PRIMARY KEY,
-        projectName TEXT NOT NULL,
-        userName TEXT NOT NULL,
-        projectUrl TEXT NOT NULL,
-        imageUrl TEXT NOT NULL,
-        createdAt TEXT DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
+            CREATE TABLE IF NOT EXISTS submissions (
+                id INTEGER PRIMARY KEY,
+                projectName TEXT NOT NULL,
+                userName TEXT NOT NULL,
+                projectUrl TEXT NOT NULL,
+                imageUrl TEXT NOT NULL,
+                createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS registrations (
+                id INTEGER PRIMARY KEY,
+                name TEXT NOT NULL,
+                email TEXT NOT NULL,
+                vnumber TEXT NOT NULL,
+                createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+
 
         app.listen(PORT, () => {
             console.log(`Express listening on http://localhost:${PORT}`);
