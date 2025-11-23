@@ -18,6 +18,7 @@
     "cors": "^2.8.5",
     "express": "^5.1.0",
     "multer": "^2.0.2",
+    "pg": "^8.16.3",
     "sqlite": "^5.1.1",
     "sqlite3": "^5.1.7"
   },
@@ -26,6 +27,7 @@
     "@types/express": "^5.0.5",
     "@types/multer": "^2.0.0",
     "@types/node": "^24.10.1",
+    "@types/pg": "^8.15.6",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   }

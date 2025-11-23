@@ -6,6 +6,7 @@ import fs from "fs";
 import type { Database } from "sqlite";
 import { openDb } from "./db";
 import cors from "cors";
+import { query } from "./hack-db";
 
 const app = express();
 let db: Database;
@@ -57,21 +58,21 @@ app.use("/uploads", express.static(uploadDir));
 
 // --- ROUTES -----------------------------------------------------------
 
-// register UVic Hacks member
+// register UVic Hacks member (Postgres)
 app.post("/api/registrations", async (req, res) => {
     try {
         const { name, email, vnumber } = req.body || {};
 
         if (!name || !email || !vnumber) {
-            return res.status(400).json({ error: "Missing name, email, or vnumber" });
+            return res
+                .status(400)
+                .json({ error: "Missing name, email, or vnumber" });
         }
 
-        await db.run(
+        await query(
             `INSERT INTO registrations (name, email, vnumber)
-             VALUES (?, ?, ?)`,
-            name,
-            email,
-            vnumber
+       VALUES ($1, $2, $3)`,
+            [name, email, vnumber]
         );
 
         res.status(201).json({ success: true });
@@ -81,13 +82,13 @@ app.post("/api/registrations", async (req, res) => {
     }
 });
 
-// list registrations (optional)
+// list registrations (Postgres)
 app.get("/api/registrations", async (_req, res) => {
     try {
-        const rows = await db.all(
+        const { rows } = await query(
             `SELECT id, name, email, vnumber, createdAt
-             FROM registrations
-             ORDER BY createdAt DESC`
+       FROM registrations
+       ORDER BY createdAt DESC`
         );
         res.json(rows);
     } catch (e) {
@@ -96,9 +97,17 @@ app.get("/api/registrations", async (_req, res) => {
     }
 });
 
+// registrations count (Postgres)
 app.get("/api/registrations/count", async (_req, res) => {
-    const row = await db.get(`SELECT COUNT(*) as count FROM registrations`);
-    res.json({ count: row.count });
+    try {
+        const { rows } = await query(
+            `SELECT COUNT(*)::int as count FROM registrations`
+        );
+        res.json({ count: rows[0]?.count ?? 0 });
+    } catch (e) {
+        console.error("Error counting registrations:", e);
+        res.status(500).json({ error: "Server error" });
+    }
 });
 
 
