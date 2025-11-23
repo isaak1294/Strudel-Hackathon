@@ -209,6 +209,16 @@ async function start() {
             );
         `);
 
+        await query(`
+        CREATE TABLE IF NOT EXISTS registrations (
+            id SERIAL PRIMARY KEY,
+            name TEXT NOT NULL,
+            email TEXT NOT NULL,
+            vnumber TEXT NOT NULL,
+            createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        `);
+
 
         app.listen(PORT, () => {
             console.log(`Express listening on http://localhost:${PORT}`);
