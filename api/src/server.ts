@@ -96,6 +96,11 @@ app.get("/api/registrations", async (_req, res) => {
     }
 });
 
+app.get("/api/registrations/count", async (_req, res) => {
+    const row = await db.get(`SELECT COUNT(*) as count FROM registrations`);
+    res.json({ count: row.count });
+});
+
 
 // health check
 app.get("/api/health", (_req, res) => {
