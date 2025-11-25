@@ -119,7 +119,7 @@ app.get(`/api/registrations`, async (req, res) => {
 app.get("/api/registrations/count", async (_req, res) => {
     try {
         const { rows } = await query(
-            `SELECT COUNT(*)::int as count FROM registrations`
+            `SELECT COUNT(DISTINCT email)::int as count FROM registrations`
         );
         res.json({ count: rows[0]?.count ?? 0 });
     } catch (e) {
