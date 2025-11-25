@@ -83,14 +83,32 @@ app.post("/api/registrations", async (req, res) => {
 });
 
 // list registrations (Postgres)
-app.get("/api/registrations", async (_req, res) => {
+app.get(`/api/registrations`, async (req, res) => {
     try {
+        // 1. Get the key provided in the request header
+        // Note: Express converts all headers to lowercase
+        const incomingKey = req.headers['x-api-key'];
+
+        // 2. Check if the server has an API key set (Safety check)
+        const secretKey = process.env.API_KEY;
+        if (!secretKey) {
+            console.error("CRITICAL: API_KEY is not set in environment variables.");
+            return res.status(500).json({ error: "Server configuration error" });
+        }
+
+        // 3. Compare the keys
+        if (incomingKey !== secretKey) {
+            return res.status(401).json({ error: "Unauthorized access" });
+        }
+
+        // --- Original Logic Below ---
         const { rows } = await query(
             `SELECT id, name, email, vnumber, createdAt
-       FROM registrations
-       ORDER BY createdAt DESC`
+             FROM registrations
+             ORDER BY createdAt DESC`
         );
         res.json(rows);
+
     } catch (e) {
         console.error("Error listing registrations:", e);
         res.status(500).json({ error: "Server error" });
