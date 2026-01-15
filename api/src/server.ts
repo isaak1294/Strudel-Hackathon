@@ -6,7 +6,13 @@ import fs from "fs";
 import type { Database } from "sqlite";
 import { openDb } from "./db";
 import cors from "cors";
-import { query } from "./hack-db";
+import { pool, query } from "./hack-db";
+import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
+import { Storage } from '@google-cloud/storage';
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const app = express();
 let db: Database;
@@ -53,12 +59,127 @@ const upload = multer({
     limits: { fileSize: 20 * 1024 * 1024 }, // 20MB
 });
 
+const googleStorage = new Storage({
+    keyFilename: './gcs-key.json',
+});
+const bucket = googleStorage.bucket('uvic-hacks-resume');
+
+async function generateV4ReadSignedUrl(filePath: string) {
+    const options = {
+        version: 'v4' as const,
+        action: 'read' as const,
+        expires: Date.now() + 15 * 60 * 1000, // Link lasts 15 minutes
+    };
+
+    // Get a signed URL from GCS
+    const [url] = await bucket
+        .file(filePath)
+        .getSignedUrl(options);
+
+    return url;
+}
+
 // serve images
 app.use("/uploads", express.static(uploadDir));
 
 // --- ROUTES -----------------------------------------------------------
 
-// register UVic Hacks member (Postgres)
+// Account Registration
+app.post("/api/account-reg", upload.single('resume'), async (req, res) => {
+    // Start a client from the pool to handle the transaction
+    const client = await pool.connect();
+
+    try {
+        const { name, email, vnumber, password, bio } = req.body;
+
+        await client.query('BEGIN'); // Start Transaction
+
+        // 1. Hash Password
+        const passwordHash = crypto.createHash("sha256").update(password).digest("hex");
+
+        // 2. Insert User
+        const userResult = await client.query(
+            `INSERT INTO users (name, email, vnumber, password_hash, bio)
+             VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+            [name, email, vnumber, passwordHash, bio]
+        );
+        const userId = userResult.rows[0].id;
+
+        // 3. Register for "Inspire Hackathon" (Event ID 1 from our seed)
+        // Check: Does an event with ID 1 exist in your 'events' table?
+        await client.query(
+            `INSERT INTO event_registrations (user_id, event_id) VALUES ($1, $2)`,
+            [userId, 1]
+        );
+
+        await client.query('COMMIT'); // Save everything
+        res.status(201).json({ success: true, userId });
+
+    } catch (e: any) {
+        await client.query('ROLLBACK'); // Undo everything if any part fails
+
+        console.error("DETAILED BACKEND ERROR:", e.message); // Look at your terminal for this!
+
+        if (e.code === '23505') {
+            return res.status(400).json({ error: "Email or V-number already in use" });
+        }
+        res.status(500).json({ error: e.message || "Server error" });
+    } finally {
+        client.release(); // Put the connection back in the pool
+    }
+});
+// Admin access/ student account viewing
+app.get("/api/admin/registrations", async (req, res) => {
+    try {
+        // Simple API Key check for admins
+        if (req.headers['x-api-key'] !== process.env.API_KEY) {
+            return res.status(401).json({ error: "Unauthorized" });
+        }
+
+        const { rows: users } = await query(
+            `SELECT id, name, email, vnumber, resume_path, createdat 
+             FROM users ORDER BY createdat DESC`
+        );
+
+        // Map over users and add a temporary signed link if they have a resume
+        const usersWithLinks = await Promise.all(users.map(async (user) => {
+            if (user.resume_path) {
+                try {
+                    user.resume_url = await generateV4ReadSignedUrl(user.resume_path);
+                } catch (err) {
+                    console.error(`Error signing URL for ${user.resume_path}`, err);
+                    user.resume_url = null;
+                }
+            }
+            return user;
+        }));
+
+        res.json(usersWithLinks);
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: "Failed to fetch registrations" });
+    }
+});
+
+app.post("/api/events/register", async (req, res) => {
+    const { userId, eventId } = req.body;
+
+    try {
+        await query(
+            `INSERT INTO event_registrations (user_id, event_id) 
+             VALUES ($1, $2)`,
+            [userId, eventId]
+        );
+        res.status(201).json({ success: true, message: "Registered for event!" });
+    } catch (e: any) {
+        if (e.code === '23505') {
+            return res.status(400).json({ error: "You are already registered for this event." });
+        }
+        res.status(500).json({ error: "Server error" });
+    }
+});
+
+// register UVic Hacks member for counting
 app.post("/api/registrations", async (req, res) => {
     try {
         const { name, email, vnumber } = req.body || {};
@@ -119,7 +240,7 @@ app.get(`/api/registrations`, async (req, res) => {
 app.get("/api/registrations/count", async (_req, res) => {
     try {
         const { rows } = await query(
-            `SELECT COUNT(*)::int as count FROM registrations`
+            `SELECT COUNT(DISTINCT email)::int as count FROM registrations`
         );
         res.json({ count: rows[0]?.count ?? 0 });
     } catch (e) {
