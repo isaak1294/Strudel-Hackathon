@@ -418,6 +418,28 @@ app.get("/api/admin/event-registrants/:eventId", async (req, res) => {
     }
 });
 
+app.get("/api/events/:eventId/count", async (req, res) => {
+    try {
+        const { eventId } = req.params;
+
+        // We only return the count, no personal user data
+        const { rows } = await query(
+            `SELECT COUNT(*)::int as count 
+             FROM event_registrations 
+             WHERE event_id = $1`,
+            [eventId]
+        );
+
+        res.json({
+            success: true,
+            count: rows[0]?.count ?? 0
+        });
+    } catch (e) {
+        console.error("Error fetching registration count:", e);
+        res.status(500).json({ error: "Failed to fetch count" });
+    }
+});
+
 // register UVic Hacks member for counting
 app.post("/api/registrations", async (req, res) => {
     try {
