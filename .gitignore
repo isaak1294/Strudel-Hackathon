@@ -41,5 +41,5 @@ yarn-error.log*
 next-env.d.ts
 
 # server
-/api/uvic-hacks-943a3a5b761d.json
+/api/gcs-key.json
 /api/.env
