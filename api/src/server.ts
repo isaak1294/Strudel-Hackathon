@@ -362,6 +362,62 @@ app.put("/api/profile", authenticate, upload.single('resume'), async (req: any, 
     }
 });
 
+app.get("/api/admin/event-registrants/:eventId", async (req, res) => {
+    try {
+        // 1. Admin Security Check
+        const incomingKey = req.headers['x-api-key'];
+        if (incomingKey !== process.env.API_KEY) {
+            return res.status(401).json({ error: "Unauthorized" });
+        }
+
+        const eventId = req.params.eventId;
+
+        // 2. Join Users with Registrations
+        const { rows: registrants } = await query(
+            `SELECT 
+                u.id, 
+                u.name, 
+                u.email, 
+                u.vnumber, 
+                u.resume_path, 
+                u.bio,
+                er.registered_at
+             FROM users u
+             JOIN event_registrations er ON u.id = er.user_id
+             WHERE er.event_id = $1
+             ORDER BY er.registered_at DESC`,
+            [eventId]
+        );
+
+        // 3. Generate Resume Links for the Admin
+        const registrantsWithLinks = await Promise.all(registrants.map(async (user) => {
+            let resumeUrl = null;
+            if (user.resume_path) {
+                try {
+                    const [url] = await bucket.file(user.resume_path).getSignedUrl({
+                        version: 'v4',
+                        action: 'read',
+                        expires: Date.now() + 60 * 60 * 1000, // 1 hour
+                    });
+                    resumeUrl = url;
+                } catch (err) {
+                    console.error("Error signing URL:", err);
+                }
+            }
+            return { ...user, resume_url: resumeUrl };
+        }));
+
+        res.json({
+            count: registrantsWithLinks.length,
+            registrants: registrantsWithLinks
+        });
+
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: "Failed to fetch event registrants" });
+    }
+});
+
 // register UVic Hacks member for counting
 app.post("/api/registrations", async (req, res) => {
     try {
