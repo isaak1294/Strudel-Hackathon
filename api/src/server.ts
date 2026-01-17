@@ -91,7 +91,14 @@ app.use("/uploads", express.static(uploadDir));
 app.post("/api/account-reg", upload.single('resume'), async (req: any, res) => {
     const client = await pool.connect();
     try {
-        const { name, email, vnumber, password, bio } = req.body;
+        const { name, email, vnumber, password, bio, agreed } = req.body;
+
+        // Convert string "true"/"false" from FormData to actual boolean
+        const hasAgreed = agreed === 'true' || agreed === true;
+
+        if (!hasAgreed) {
+            return res.status(400).json({ error: "You must agree to the terms to register." });
+        }
         const JWT_SECRET = process.env.JWT_SECRET || 'hackathon-super-secret';
         let resumePath = null;
         let resumeUrl = null;
@@ -117,10 +124,18 @@ app.post("/api/account-reg", upload.single('resume'), async (req: any, res) => {
 
         // 2. Insert User (MAKE SURE resume_path IS IN THE VALUES LIST)
         const userResult = await client.query(
-            `INSERT INTO users (name, email, vnumber, password_hash, bio, resume_path)
-             VALUES ($1, $2, $3, $4, $5, $6) 
-             RETURNING id, name, email, vnumber, bio, resume_path`,
-            [name, email, vnumber.trim() || null, crypto.createHash("sha256").update(password).digest("hex"), bio, resumePath]
+            `INSERT INTO users (name, email, vnumber, password_hash, bio, resume_path, agreed_to_terms)
+             VALUES ($1, $2, $3, $4, $5, $6, $7) 
+             RETURNING id, name, email, agreed_to_terms`,
+            [
+                name,
+                email,
+                vnumber,
+                crypto.createHash("sha256").update(password).digest("hex"),
+                bio,
+                resumePath,
+                hasAgreed
+            ]
         );
         const newUser = userResult.rows[0];
 

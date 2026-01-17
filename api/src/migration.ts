@@ -38,10 +38,9 @@ const init = async () => {
             UNIQUE(user_id, event_id) 
         );`,
 
-        // 4. Seed Data (So you have an event to test with immediately)
-        `INSERT INTO events (id, title, description) 
-         VALUES (1, 'UVic Hacks 2026', 'The main hackathon event.')
-         ON CONFLICT (id) DO NOTHING;`
+        `ALTER TABLE users 
+        ADD COLUMN agreed_to_terms BOOLEAN DEFAULT FALSE;
+        `
     ];
 
     try {
