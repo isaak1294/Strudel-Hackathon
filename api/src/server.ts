@@ -96,9 +96,6 @@ app.post("/api/account-reg", upload.single('resume'), async (req: any, res) => {
         // Convert string "true"/"false" from FormData to actual boolean
         const hasAgreed = agreed === 'true' || agreed === true;
 
-        if (!hasAgreed) {
-            return res.status(400).json({ error: "You must agree to the terms to register." });
-        }
         const JWT_SECRET = process.env.JWT_SECRET || 'hackathon-super-secret';
         let resumePath = null;
         let resumeUrl = null;
